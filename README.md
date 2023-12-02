@@ -1,4 +1,4 @@
-I use selenium, sqlite3, csv, BeautifulSoup and Matplotlib to create this agoda crawler.
+I use Flask, selenium, sqlite3, csv, BeautifulSoup and Matplotlib to create this agoda crawler.
 
 More details in the presentation.
 
