@@ -5,5 +5,7 @@ More details in the presentation.
 NOTE: Required chrome version 119.x.xxxx.xxx
 
 Example videos:
+
 https://www.youtube.com/watch?v=h6uDy0JGaLY
+
 https://www.youtube.com/watch?v=QEO_ZKUfvC4
