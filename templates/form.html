@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>搜尋</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+
+</head>
+
+<body>
+<div class="login-box">
+  <h2>搜尋</h2>
+  <form id="search" method="POST">
+
+
+      <label style="color: #fff;" for="city">選擇城市　</label>
+      <select class="custom-select" name="city" id="city" required>
+        <option value="4951" selected>臺北市</option>
+        <option value="4951">新北市</option>
+        <option value="17048">基隆市</option>
+        <option value="8453">桃園市</option>
+        <option value="12711">新竹縣</option>
+        <option value="12711">新竹市</option>
+        <option value="287008">苗栗縣</option>
+        <option value="12080">臺中市</option>
+        <option value="18341">彰化縣</option>
+        <option value="18346">南投縣</option>
+        <option value="18352">雲林縣</option>
+        <option value="11977">嘉義縣</option>
+        <option value="11977">嘉義市</option>
+        <option value="18347">臺南市</option>
+        <option value="756">高雄市</option>
+        <option value="11459">屏東縣</option>
+        <option value="88773">宜蘭縣</option>
+        <option value="23127">花蓮縣</option>
+        <option value="4740">臺東縣</option>
+        <option value="106001">澎湖縣</option>
+        <option value="286060">金門縣</option>
+        <option value="702190">連江縣</option>
+      </select>
+
+
+    <div style="margin-top: 20px;" class="user-box">
+      <input type="text" name="checkin" placeholder="　　　　　YYYY-MM-DD" required>
+      <label>入住日期</label>
+    </div>
+
+    <div class="user-box">
+      <input type="text" name="checkout" placeholder="　　　　　YYYY-MM-DD" required>
+      <label>退房日期</label>
+    </div>
+
+    <div class="user-box">
+      <input type="text" name="adult" required>
+      <label>人數</label>
+    </div>
+
+    <div class="user-box">
+      <input type="text" name="room" required>
+      <label>房間數量</label>
+    </div>
+
+    <button id='submitbutton' type='submit' name='parameter' value='One'>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    送出查詢
+    </button>
+  </form>
+</div>
+
+<div id="showmsg" style="display: none;">正在查詢中，請稍等...<div>
+
+<script>
+const showtextButton = document.getElementById("submitbutton");
+      const mytext = document.getElementById("showmsg"); 
+      showtextButton.addEventListener("click", () => { 
+	     showmsg.style.display = "block";
+      });
+</script>
+
+</body>
+</html>
+
+
+
+
+

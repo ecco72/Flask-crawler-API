@@ -1,0 +1,66 @@
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>飯店搜尋結果</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/hotels.css') }}">
+</head>
+
+<body>
+<header class="header-outer">
+	<div class="header-inner responsive-wrapper">
+		<div class="header-logo">
+			<a>入住日期：{{checkin}}　</a>
+			<a>退房日期：{{checkout}}　</a>
+			<a>人數：{{adults}}　</a>
+			<a>房間數量：{{rooms}}　　　　</a>
+			<a id="download" href="/getCSV">下載csv</a>
+			<a id="download" href="/plot">空房數量與價格分析圖</a>
+		</div>
+		<nav class="header-navigation">
+			<a href="http://127.0.0.1:5000/search">重新篩選</a>
+			<a href="http://127.0.0.1:5000/" target="__blank">回首頁</a>
+		</nav>
+	</div>
+</header>
+
+
+{% for row in result %}   
+  <div class="container page-wrapper">
+    <div class="page-inner">
+      <div class="row">
+        <div class="el-wrapper" href="{{row.2}}" target="__blank">
+          <div class="box-up">
+            <img class="img" src="{{row.3}}" alt="">
+            <div class="img-info">
+              <div class="info-inner">
+                <span class="p-name">{{row.0}}</span>
+                <span class="p-company">區域:{{row.4}}</span>
+              </div>
+              <div class="a-size">星級 : <span class="size">{{row.5}}</span></div>
+            </div>
+          </div>
+
+          <div class="box-down">
+            <div class="h-bg">
+              <div class="h-bg-inner"></div>
+            </div>
+
+            <a class="cart" href="{{row.2}}" target="__blank">
+              <span class="price">${{row.1}}</span>
+              <span class="add-to-cart">
+                <span class="txt">訂房</span>
+              </span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endfor %} 
+
+
+<div style="clear:both;height: 5px"></div>
+<div>{{pagination.links}}</div>
+
+</body>
+</html>

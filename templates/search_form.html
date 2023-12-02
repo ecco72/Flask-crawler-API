@@ -1,0 +1,43 @@
+<head>
+	<meta charset="utf-8">
+	<title>篩選條件</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+
+</head>
+
+<body>
+<div class="login-box">
+  <h2>篩選條件</h2>
+  <form action="/hotels" method="GET">
+    <div class="user-box">
+      <input type="text" name="p" >
+      <label>飯店名稱(選填)</label>
+    </div>
+    <div class="user-box">
+      <input type="text" name="area" >
+      <label>區域(選填)</label>
+    </div>
+        <div class="user-box">
+      <input type="text" name="startp" required>
+      <label>最低價格</label>
+    </div>
+        <div class="user-box">
+      <input type="text" name="endp" required>
+      <label>最高價格</label>
+    </div>
+    <button id='submitbutton' type='submit' >
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    送出查詢
+    </button>
+  </form>
+</div>
+
+
+
+</body>
+</html>
+
+
