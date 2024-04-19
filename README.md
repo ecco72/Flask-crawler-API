@@ -1,11 +1,11 @@
-I use Flask, selenium, sqlite3, csv, BeautifulSoup and Matplotlib to create this agoda crawler.
+An executable of Flask app which built with Flask, BeautifulSoup, Selenium, sqlite3 and Matplotlib
 
-More details in the PowerPoint.
+Compatible with Chrome version  123.x.xxxx.xx to 124.x.xxxx.xx.
 
-NOTE: Required chrome version 119.x.xxxx.xxx
+Create Executable of Python Script using PyInstaller
+"""
+pyinstaller -F --add-binary "chromedriver.exe";"." --add-data=".\\flask.db;." --add-data=".\\TaipeiSansTCBeta-Regular.ttf;." --add-data=".\\templates\\*;.\\templates" --add-data=".\\static\\css\\*;.\\static\\css" main.py
+"""
 
 Example videos:
-
-https://www.youtube.com/watch?v=h6uDy0JGaLY
-
-https://www.youtube.com/watch?v=QEO_ZKUfvC4
+https://youtu.be/KXB003kMDgw
