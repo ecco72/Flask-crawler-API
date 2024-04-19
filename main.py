@@ -245,7 +245,14 @@ def getCSV():
 
 @app.route("/statistic.png")
 def statistic():
-    fontManager.addfont('TaipeiSansTCBeta-Regular.ttf')
+    if getattr(sys, 'frozen', False):   #用 pyinstaller 打包生成的 exe 文件，在運行時動態生成依賴文件，sys._MEIPASS 就是這些依賴文件所在文件夾的路徑
+        font_path = os.path.join(sys._MEIPASS, "TaipeiSansTCBeta-Regular.ttf") #123版本
+        fontManager.addfont(font_path)
+    else:
+        fontManager.addfont('TaipeiSansTCBeta-Regular.ttf')
+    
+    
+    # fontManager.addfont('TaipeiSansTCBeta-Regular.ttf')
     plt.rc('font', family='Taipei Sans TC Beta')
     plt.rcParams['axes.unicode_minus'] = False
     
