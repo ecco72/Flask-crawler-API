@@ -8,4 +8,4 @@ pyinstaller -F --add-binary "chromedriver.exe";"." --add-data=".\\flask.db;." --
 ```
 
 Example videos:
-https://youtu.be/KXB003kMDgw
+https://youtu.be/LE5ereQ6W5U
