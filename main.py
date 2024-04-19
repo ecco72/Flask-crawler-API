@@ -8,7 +8,6 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import json
 import time
-import csv
 import db
 import os, sys   #指定路徑用
 import webbrowser   #開啟127.0.0.1:5000頁面
@@ -51,27 +50,29 @@ def my_form_post():
     options = Options()
     caps = {                          #開啟日誌監聽
             "browserName": "chrome",
-            'goog:loggingPrefs': {'performance': 'ALL'}
+            'goog:loggingPrefs': {'performance': 'ALL'},
             }
 
     for key, value in caps.items():  # 將caps加入到options中
         options.set_capability(key, value)
     
     if getattr(sys, 'frozen', False):   #用 pyinstaller 打包生成的 exe 文件，在運行時動態生成依賴文件，sys._MEIPASS 就是這些依賴文件所在文件夾的路徑
-        chromedriver_path = os.path.join(sys._MEIPASS, "chromedriver.exe")
+        chromedriver_path = os.path.join(sys._MEIPASS, "chromedriver.exe") #123版本
         service = Service(executable_path=chromedriver_path)
         browser = webdriver.Chrome(service=service, options=options)
     else:
         browser = webdriver.Chrome(options=options)
 
     browser.get(url)
-    browser.implicitly_wait(5)
-    time.sleep(3)
 
     while True:    #滾動頁面 並且切換到下一頁
         for i in range(22):
-            browser.execute_script('window.scrollBy(0,1500)')
-            time.sleep(0.4)
+            browser.implicitly_wait(5)  #避免未讀取完畢導致錯誤
+            browser.execute_script('window.scrollBy(0,1650)')
+            time.sleep(0.6)
+            go_or_not = browser.execute_script("return (window.innerHeight + window.scrollY) >= document.body.offsetHeight;")
+            if go_or_not:
+                break
         soup = BeautifulSoup(browser.page_source,'html.parser')
         topbutton = soup.find(id = 'paginationContainer')
         if topbutton.find(id = 'paginationNext') != None:   #下一頁按鈕
@@ -104,11 +105,11 @@ def my_form_post():
             continue
         
         try:
-            resp = browser.execute_cdp_cmd('Network.getResponseBody', {'requestId': requestId}) #使用 cdp
-            respstr = str(resp).replace("{'base64Encoded': False, 'body': '{", '{').replace("}}}'}", '}}}').replace('\\', '')  #整理從網站擷取的json檔案
-            
-            if '{"data":{"citySearch":{"featuredPulseProperties":' in respstr:
-                agoda = json.loads(respstr)
+            resp = browser.execute_cdp_cmd('Network.getResponseBody', {'requestId': requestId}) #使用 Chrome Devtools Protocol
+            json_data = resp['body']
+
+            if '{"data":{"citySearch":{"featuredPulseProperties":' in json_data:
+                agoda = json.loads(json_data)
                 special = agoda['data']['citySearch']['featuredPulseProperties']
                 for s in special:
                     name = s['content']['informationSummary']['displayName'].replace("'","''")
@@ -117,29 +118,13 @@ def my_form_post():
                     link = urlfront + s['content']['informationSummary']['propertyLinks']['propertyPage'] + urlback
                     price = s['pricing']['offers'][0]['roomOffers'][0]['room']['pricing'][0]['price']['perRoomPerNight']['exclusive']['display']
                     img = 'https://'+s['content']['images']['hotelImages'][0]['urls'][0]['value']
-                        
-                    with open('agoda_search_result.csv', 'a', encoding='UTF-8-sig',newline='') as f:
-                        writer = csv.writer(f)
-                        
-                        fObj = open("agoda_search_result.csv", "r",encoding='UTF-8-sig')   #檢查csv檔案內是否有重複 若有則略過
-                        allLines = fObj.readlines()
-                        fObj.close()
-                        
-                        if not '飯店名稱:,'+name+'\n' in allLines:
-                            writer.writerow(['飯店名稱:',name])
-                            writer.writerow(['位置:',area])
-                            writer.writerow(['星級:',rating])
-                            writer.writerow(['連結:',link])
-                            writer.writerow(['價格:',price])
-                            writer.writerow(['圖片:',img])
-                            writer.writerow([' '])
                             
-                            sql = "select * from agoda where title='{}' and platform='agoda'  ".format(name)
-                            db.cursor.execute(sql)
-                            
-                            sql = "insert into agoda(title,price,loc,link_url,photo_url,rate,platform) values('{}','{}','{}','{}','{}','{}','agoda')".format(name,price,area,link,img,rating)
-                            db.cursor.execute(sql)
-                            db.conn.commit()
+                    sql = "select * from agoda where title='{}' and platform='agoda'  ".format(name)
+                    db.cursor.execute(sql)
+                    
+                    sql = "insert into agoda(title,price,loc,link_url,photo_url,rate,platform) values('{}','{}','{}','{}','{}','{}','agoda')".format(name,price,area,link,img,rating)
+                    db.cursor.execute(sql)
+                    db.conn.commit()
                                
                 normal = agoda['data']['citySearch']['properties']
                 for n in normal:
@@ -155,34 +140,23 @@ def my_form_post():
                         price = '這天已經沒有空房了！'
                     else:
                         price = n['pricing']['offers'][0]['roomOffers'][0]['room']['pricing'][0]['price']['perRoomPerNight']['exclusive']['display']
-                        
-                    with open('agoda_search_result.csv', 'a', encoding='UTF-8-sig',newline='') as f:
-                        writer = csv.writer(f)
-                        
-                        fObj = open("agoda_search_result.csv", "r",encoding='UTF-8-sig')
-                        allLines = fObj.readlines()
-                        fObj.close()
-                        
-                        if not '飯店名稱:,'+name+'\n' in allLines:
-                            writer.writerow(['飯店名稱:',name])
-                            writer.writerow(['位置:',area])
-                            writer.writerow(['星級:',rating])
-                            writer.writerow(['連結:',link])
-                            writer.writerow(['價格:',price])
-                            writer.writerow(['圖片:',img])
-                            writer.writerow([' '])
                             
-                            sql = "select * from agoda where title='{}' and platform='agoda'  ".format(name)
-                            db.cursor.execute(sql)
-                            
-                            sql = "insert into agoda(title,price,loc,link_url,photo_url,rate,platform) values('{}','{}','{}','{}','{}','{}','agoda')".format(name,price,area,link,img,rating)
-                            db.cursor.execute(sql)
-                            db.conn.commit()
+                    sql = "select * from agoda where title='{}' and platform='agoda'  ".format(name)
+                    db.cursor.execute(sql)
+                    sql = "insert into agoda(title,price,loc,link_url,photo_url,rate,platform) values('{}','{}','{}','{}','{}','{}','agoda')".format(name,price,area,link,img,rating)
+                    db.cursor.execute(sql)
+                    db.conn.commit()
+                    
         except WebDriverException:    #網頁可能在程式執行cdp之後還有請求，會導致出現這個錯誤，因為要抓的<search> json 在執行cdp前就已讀取完畢，可以忽略這個錯誤
             pass
         
-    os.remove('agoda_search_result.csv')   #將比對用的csv刪除
     sql = "DELETE FROM agoda WHERE price = '這天已經沒有空房了！' or link_url = '沒有連結！'"   #整理資料庫內資料
+    db.cursor.execute(sql)
+    db.conn.commit()
+    sql = "DELETE FROM agoda WHERE ROWID NOT IN (SELECT MIN(ROWID) FROM agoda GROUP BY title)" #刪除重複資料並保留一筆
+    db.cursor.execute(sql)
+    db.conn.commit()
+    sql = "DELETE from agoda where (title like '%公寓%' and price > 8000) or (price > 50000) or (title like '%臥室%' and price > 8000) or (title like '%Apartment%' and price > 8000)" #刪除不合理價格的飯店
     db.cursor.execute(sql)
     db.conn.commit()
     browser.close()    
@@ -195,8 +169,16 @@ def my_form2():
 @app.route('/hotels')
 def goods():
     p = request.args.get('p',' ')    #預設空白
-    startp = int(request.args.get('startp'))
-    endp = int(request.args.get('endp'))
+    if request.args.get('startp') == '':
+        startp = 0
+    else:
+        startp = int(request.args.get('startp'))
+    
+    if request.args.get('endp') =='':
+        endp = 50000
+    else:
+        endp = int(request.args.get('endp'))
+        
     area = request.args.get('area',' ')
     page = int(request.args.get('page',1))   #http://127.0.0.1:5000/news?page=2
     
@@ -318,6 +300,46 @@ def statistic():
 @app.route('/plot')
 def plot():
     
-    return render_template('plot.html')
+    #平均價格最便宜區域: xx元
+    avgcheap_sql = "SELECT loc, AVG(price) AS avg_price FROM agoda GROUP BY loc ORDER BY avg_price LIMIT 1"
+    db.cursor.execute(avgcheap_sql)
+    avgcheap = db.cursor.fetchall()
+    
+    #平均價格最貴區域: xx元
+    avgexpensive_sql = "SELECT loc, AVG(price) AS avg_price FROM agoda GROUP BY loc ORDER BY avg_price DESC LIMIT 1"
+    db.cursor.execute(avgexpensive_sql)
+    avgexpensive = db.cursor.fetchall()
+    
+    #空房最多區域: xx間
+    emptyroom_sql = "SELECT loc, count(*) from agoda GROUP by loc ORDER by count(*) DESC LIMIT 1"
+    db.cursor.execute(emptyroom_sql)
+    emptyroom = db.cursor.fetchall()
+    
+    return render_template('plot.html', **globals(), **locals())
+
+@app.route('/recommendation')
+def recommendation():    
+    #全區最便宜5間
+    mostcheap_sql = "SELECT title,price,link_url,photo_url,loc,rate FROM agoda order by price limit 4"
+    db.cursor.execute(mostcheap_sql)
+    mostcheap = db.cursor.fetchall()
+    
+    #全區最貴5間
+    mostexpensive_sql = "SELECT title,price,link_url,photo_url,loc,rate FROM agoda order by price desc limit 4"
+    db.cursor.execute(mostexpensive_sql)
+    mostexpensive = db.cursor.fetchall()
+    
+    #各區最便宜
+    areacheap_sql = "SELECT title,MIN(price),link_url,photo_url,loc,rate FROM agoda GROUP BY loc"
+    db.cursor.execute(areacheap_sql)
+    areacheap = db.cursor.fetchall()
+    
+    #各區最貴
+    areaexpensive_sql = "SELECT title,MAX(price),link_url,photo_url,loc,rate FROM agoda GROUP BY loc"
+    db.cursor.execute(areaexpensive_sql)
+    areaexpensive = db.cursor.fetchall()
+
+    
+    return render_template('recommendation.html', **globals(), **locals())
 
 app.run()
