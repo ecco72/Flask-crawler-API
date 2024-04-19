@@ -2,10 +2,40 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<title>搜尋</title>
+	<title>空房數量與價格分析</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/hotels.css') }}">
 </head>
 
 <body>
+<header class="header-outer">
+	<div class="header-inner responsive-wrapper">
+		<div class="header-logo">
+			<a>入住日期：{{checkin}}　</a>
+			<a>退房日期：{{checkout}}　</a>
+			<a>人數：{{adults}}　</a>
+			<a>房間數量：{{rooms}}　　　　</a>
+			<a class="download" href="/getCSV">下載csv</a>
+			<a class="download" href="/plot">空房數量與價格分析</a>
+			<a class="download" href="/recommendation">精選</a>
+		</div>
+		<nav class="header-navigation">
+			<a href="http://127.0.0.1:5000/search">重新篩選</a>
+			<a href="http://127.0.0.1:5000/" target="__blank">回首頁</a>
+		</nav>
+	</div>
+</header>
+
+{% for row in avgcheap %}   
+	<div style="clear:both;font-size: large;margin-left:80px;margin-top: 10px;margin-bottom: 10px;">平均價格最便宜區域為{{row.0}}，平均價格為{{row.1}}元</div>
+{% endfor %} 
+
+{% for row in avgexpensive %}   
+	<div style="clear:both;font-size: large;margin-left: 80px;margin-top: 10px;margin-bottom: 10px;">平均價格最貴區域為{{row.0}}，平均價格為{{row.1}}元</div>
+{% endfor %} 
+
+{% for row in emptyroom %}   
+	<div style="clear:both;font-size: large;margin-left: 80px;margin-top: 10px;margin-bottom: 10px;">最多空房區域為{{row.0}}，空房數量為{{row.1}}間</div>
+{% endfor %} 
 
 <div style="text-align:center"><img style="width: 90%" src="/statistic.png"></div>
 
