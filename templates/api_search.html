@@ -4,8 +4,9 @@
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/api_search.css') }}">
 </head>
 
-<!--透過GET傳送到API-->  
+
 <body>
+  <!--建立登出連結(AJAX來發送HTTP請求，傳送錯誤的帳號密碼讓登入狀態改為未登入狀態)-->  
   <a id="combinedLink" class="logout" href="javascript:void(0);">登出並重新整理</a>
 
   <script>
@@ -18,7 +19,7 @@
     });
   </script>
 
-
+<!--透過GET傳送到API-->  
   <div class="login-box">
     <h2>查看</h2>
     <form action="/api" method="GET">
@@ -207,7 +208,7 @@
           .catch(function (error) {
               console.error(error);
               // 處理錯誤，例如顯示錯誤訊息給用戶
-              alert('刪除失敗：' + error.message);
+              alert('權限不足或是title錯誤！');
           });
       }
   </script>
