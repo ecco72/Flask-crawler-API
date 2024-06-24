@@ -16,10 +16,149 @@ import matplotlib.pyplot as plt
 from matplotlib.font_manager import fontManager
 import io
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from flask_restful import Resource,Api,reqparse # RESTful API
+import db, sqlite3
+from flask_httpauth import HTTPBasicAuth # 驗證登入(避免竄改API資料)
 
 webbrowser.open('http://127.0.0.1:5000', new=2)   #打開搜尋頁面
 
 app = Flask(__name__)
+api = Api(app)
+auth = HTTPBasicAuth()
+
+# 此為驗證登入使用
+# sqlite內有帳號密碼以及role(權限等級)
+# staff為user 一般權限 
+# boss為admin 最高權限
+# user[2]指的是返回登入帳號的第三個值(資料庫有三個欄位 帳號、密碼、身分) 方面後面判斷能否執行DELETE
+@auth.verify_password
+def verify_password(user, password):
+    sql = "select * from user where name = '{}' and password = '{}'".format(user, password)
+    db.cursor.execute(sql)
+    user = db.cursor.fetchone()
+    if user != None:
+        return user[2]
+
+class Products_API(Resource):
+    def __init__(self):
+        self.parser = reqparse.RequestParser()
+        self.parser.add_argument('limit',required=False,type=int,location='args')
+
+        #post、put帶入參數
+        self.parser2 = reqparse.RequestParser()
+        self.parser2.add_argument('title',required=True,help='產品名稱必填',location='form')
+        self.parser2.add_argument('price',required=True,help='產品價格必填',location='form')
+        self.parser2.add_argument('loc',required=True,help='產品來源必填',location='form')
+        self.parser2.add_argument('link_url',required=False,location='form')
+        self.parser2.add_argument('rate',required=False,location='form')
+        self.parser2.add_argument('platform',required=False,location='form')
+        self.parser2.add_argument('photo_url',required=False,location='form')
+
+        #delete帶入參數
+        self.parser3 = reqparse.RequestParser()
+        self.parser3.add_argument('title',required=True,help='產品名稱必填',location='form')
+
+    #使用者get商品
+    def get(self):
+        args = self.parser.parse_args() # 解析帶入參數
+        limit = args.get('limit')
+        # 設置默認的限制數量
+        if limit is None:
+            limit = 10  # 默認返回最多10個產品
+        elif limit <= 0:
+            return {'status': 'fail', 'message': '限制數量必須大於0'}, 400
+        elif limit > 1000:
+            return {'status': 'fail', 'message': '資料筆數限制1000筆'}, 400 
+        
+        sql = "select * from agoda limit {}".format(limit)
+        db.cursor.execute(sql)
+        rows = db.cursor.fetchall()
+
+        # 將list轉換為json格式
+        result = []
+        for row in rows:
+            row_dict = {
+                "title": row[0],
+                "price": row[1],
+                "loc": row[2],
+                "link_url":row[3],
+                "rate":row[4],
+                "platform":row[5],
+                "photo_url":row[6],
+                }
+            result.append(row_dict)
+        if not rows:
+            return {'status': 'fail', 'message': '查無結果'}, 404
+        return {'status': 'success', 'products': result}, 200
+    
+    #使用者新增商品    
+    @auth.login_required
+    def post(self):
+        args2 = self.parser2.parse_args()
+        title = args2.get('title')
+        price = args2.get('price')
+        loc = args2.get('loc')        
+        link_url = args2.get('link_url')
+        rate = args2.get('rate')
+        platform = args2.get('platform')
+        photo_url = args2.get('photo_url')
+        
+        # 檢查產品是否已經存在
+        check_sql = "SELECT COUNT(*) FROM agoda WHERE title = '{}'".format(title)
+        db.cursor.execute(check_sql)  
+        if db.cursor.fetchone()[0] > 0:
+            return {'status': 'fail', 'message': '新增失敗，產品已經存在'}, 400
+        #新增新產品
+        sql= "insert into agoda (title,price,loc,link_url,rate,platform,photo_url) values('{}','{}','{}','{}','{}','{}','{}')".format(title,price,loc,link_url,rate,platform,photo_url)
+        try:
+            db.cursor.execute(sql)
+            db.conn.commit()  
+        except sqlite3.IntegrityError:
+            return {'status': 'fail', 'message': '新增資料有誤'}, 400
+        return {'status': 'success', 'message': '新增商品成功'}, 200
+          
+    #更新產品訊息
+    @auth.login_required
+    def put(self):
+        args2 = self.parser2.parse_args()
+        title = args2.get('title')
+        price = args2.get('price')
+        loc = args2.get('loc')        
+        link_url = args2.get('link_url')
+        rate = args2.get('rate')
+        platform = args2.get('platform')
+        photo_url = args2.get('photo_url')
+        
+        # 檢查產品是否不存在
+        check_sql = "SELECT COUNT(*) FROM agoda WHERE title = '{}'".format(title)
+        db.cursor.execute(check_sql)  
+        if db.cursor.fetchone()[0] == 0:
+            return {'status': 'fail', 'message': '新增失敗，產品不存在'}, 400
+        update_sql = "update agoda set price = '{}', loc = '{}', link_url = '{}' ,rate = '{}', platform= '{}', photo_url= '{}' where title = '{}'".format(price,loc,link_url,rate,platform,photo_url,title)
+        db.cursor.execute(update_sql)
+        db.conn.commit()  
+        if db.cursor.rowcount == 0:
+            return {'status': 'fail', 'message': '資料相同並未更新'}, 403
+        return {'status': 'success', 'message': '更新資料成功'}, 200
+    
+    #刪除產品
+    @auth.login_required 
+    def delete(self):
+        user_role = auth.current_user()
+        if user_role != 'admin':
+            return {'status': 'fail', 'message': '權限不足'}, 403
+        
+        args3 = self.parser3.parse_args()    
+        title = args3.get('title')
+        sql = "delete from agoda where title = '{}'".format(title)
+        db.cursor.execute(sql)
+        db.conn.commit()  
+        if db.cursor.rowcount == 0:
+            return {'status': 'fail', 'message': '商品名稱不存在'}, 403
+        return {'status': 'success', 'message': '資料刪除成功'}, 200
+
+api.add_resource(Products_API, '/api')     
+
 @app.route('/')
 def my_form():
     return render_template('form.html')   #首頁 form.html為搜尋頁面表單
@@ -43,7 +182,7 @@ def my_form_post():
     los = mcheckout-mcheckin
     los = los.days
 
-    url= "https://www.agoda.com/zh-tw/search?city={}&locale=zh-tw&checkIn={}&checkOut={}&rooms={}&adults={}&children=0&priceCur=TWD".format(city,checkin,checkout,rooms,adults)
+    url= "https://www.agoda.com/zh-tw/search?city={}&locale=zh-tw&checkIn={}&checkOut={}&rooms={}&adults={}&children=0&priceCur=TWD&sort=priceLowToHigh".format(city,checkin,checkout,rooms,adults)
     urlfront = 'https://www.agoda.com/zh-tw'
     urlback= "?finalPriceView=1&isShowMobileAppPrice=false&cid=-1&numberOfBedrooms=&familyMode=false&adults={}&children=0&rooms={}&maxRooms=0&isCalendarCallout=false&childAges=&numberOfGuest=0&missingChildAges=false&travellerType=3&showReviewSubmissionEntry=false&currencyCode=TWD&isFreeOccSearch=false&isCityHaveAsq=false&los={}&checkin={}".format(adults,rooms,los,checkin)
     
@@ -218,8 +357,11 @@ def goods():
     count = int(datacount[0])
     
     pagination = Pagination(page = page, total = count, per_page = 36, css_framework='foundation')  #將頁數變數、總筆數、一頁幾個輸入
-    
     return render_template('hotels.html', **globals(), **locals())
+
+@app.route('/api/search')
+def apipage():
+    return render_template('api_search.html')
 
 @app.route("/getCSV")
 def getCSV():
@@ -228,19 +370,18 @@ def getCSV():
     result = db.cursor.fetchall()
     title = '飯店名稱,每間每晚價格,訂房連結,區域,星級\n'
     content = ''
-    
     for row in result:
         content = content + row[0].replace(',','')+','+str(row[1])+','+row[2]+','+row[4]+','+str(row[5])+'\n'  #有些飯店名稱有逗號 要取代掉
-        
-    csv = title + content
-    prefilename = datetime.now().strftime("%Y%m%d%H%M")+'訂房查詢資料'
-    filename = parse.quote(prefilename)
-    Response.charset= 'utf-8-sig'
-    response = make_response(csv)
-    cd = f'attachment; filename={filename}.csv'
-    response.headers['Content-Disposition'] = cd 
-    response.mimetype='text/csv'
 
+    csv_content = title + content
+    csv_bom = '\ufeff' + csv_content
+    prefilename = datetime.now().strftime("%Y%m%d%H%M")+'訂房查詢資料'
+    filename = parse.quote(prefilename)+'.csv'
+
+    response = make_response(csv_bom)
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}' 
+    response.mimetype='text/csv'
+    response.charset = 'utf-8'
     return response
 
 @app.route("/statistic.png")
@@ -250,8 +391,6 @@ def statistic():
         fontManager.addfont(font_path)
     else:
         fontManager.addfont('TaipeiSansTCBeta-Regular.ttf')
-    
-    
     # fontManager.addfont('TaipeiSansTCBeta-Regular.ttf')
     plt.rc('font', family='Taipei Sans TC Beta')
     plt.rcParams['axes.unicode_minus'] = False
@@ -301,22 +440,18 @@ def statistic():
 
     output = io.BytesIO()
     FigureCanvas(fig).print_png(output)
-    fig.savefig("test.png")
     return Response(output.getvalue(), mimetype='image/png')
 
 @app.route('/plot')
 def plot():
-    
     #平均價格最便宜區域: xx元
     avgcheap_sql = "SELECT loc, AVG(price) AS avg_price FROM agoda GROUP BY loc ORDER BY avg_price LIMIT 1"
     db.cursor.execute(avgcheap_sql)
     avgcheap = db.cursor.fetchall()
-    
     #平均價格最貴區域: xx元
     avgexpensive_sql = "SELECT loc, AVG(price) AS avg_price FROM agoda GROUP BY loc ORDER BY avg_price DESC LIMIT 1"
     db.cursor.execute(avgexpensive_sql)
     avgexpensive = db.cursor.fetchall()
-    
     #空房最多區域: xx間
     emptyroom_sql = "SELECT loc, count(*) from agoda GROUP by loc ORDER by count(*) DESC LIMIT 1"
     db.cursor.execute(emptyroom_sql)
@@ -330,23 +465,19 @@ def recommendation():
     mostcheap_sql = "SELECT title,price,link_url,photo_url,loc,rate FROM agoda order by price limit 4"
     db.cursor.execute(mostcheap_sql)
     mostcheap = db.cursor.fetchall()
-    
     #全區最貴5間
     mostexpensive_sql = "SELECT title,price,link_url,photo_url,loc,rate FROM agoda order by price desc limit 4"
     db.cursor.execute(mostexpensive_sql)
     mostexpensive = db.cursor.fetchall()
-    
     #各區最便宜
     areacheap_sql = "SELECT title,MIN(price),link_url,photo_url,loc,rate FROM agoda GROUP BY loc"
     db.cursor.execute(areacheap_sql)
     areacheap = db.cursor.fetchall()
-    
     #各區最貴
     areaexpensive_sql = "SELECT title,MAX(price),link_url,photo_url,loc,rate FROM agoda GROUP BY loc"
     db.cursor.execute(areaexpensive_sql)
     areaexpensive = db.cursor.fetchall()
 
-    
     return render_template('recommendation.html', **globals(), **locals())
 
 app.run()
